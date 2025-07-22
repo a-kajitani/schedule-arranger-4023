@@ -3,8 +3,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({ log: ['query'] });
 
 const testUser = {
-  userId: 0,
-  username: 'testuser',
+  userId: 999,
+  username: 'testuser999',
 };
 
 function mockIronSession() {
@@ -346,5 +346,55 @@ describe('/schedules/:scheduleId/delete', () => {
       where: { scheduleId },
     });
     expect(schedule).toBeNull();
+  });
+});
+describe('テーマカラムに初期値がある、テーマの更新ができる', () =>{
+  beforeAll(() => {
+    mockIronSession();
+    // mockIronSession({
+    //   user: {
+    //     id: testUser.userId,
+    //     theme: "light", // ← これが重要！
+    //   },
+    // });
+  });
+
+  afterAll(async () => {
+    jest.restoreAllMocks();
+  });
+  test('lightの場合はdarkに、darkの場合はlightに変わること', async () => {
+    // テスト開始時はlightであること
+    await prisma.user.upsert({
+        where: { userId: testUser.userId },
+        create: testUser,
+        update: testUser,
+    });
+
+    let user = await prisma.user.findUnique({
+      where: { userId: testUser.userId},
+    });
+
+    expect(user.theme).toBe("light");
+
+    // 更新処理をする
+    const app = require('./app');
+    let res = await app.request('/changeTheme');
+    // ステータスコードが正しい,リダイレクトしているか
+    expect(res.headers.get('Location')).toBe('/');
+    expect(res.status).toBe(302);
+    // 更新後darkになっていること
+    user = await prisma.user.findUnique({
+      where: { userId: testUser.userId},
+    });
+    expect(user.theme).toBe("dark");
+
+    res = await app.request('/changeTheme');
+    user = await prisma.user.findUnique({
+      where: { userId: testUser.userId},
+    });
+    expect(res.headers.get('Location')).toBe('/');
+    expect(res.status).toBe(302);
+    expect(user.theme).toBe("light");
+
   });
 });

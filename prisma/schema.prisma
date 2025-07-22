@@ -16,6 +16,7 @@ datasource db {
 model User {
   userId         Int            @id
   username       String         @unique @db.VarChar(255)
+  theme    String @default("light")//ライトモードとダークモードの切り替え機能
   availabilities Availability[]
   schedules      Schedule[]
   comments       Comment[]
